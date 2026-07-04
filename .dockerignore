@@ -1,0 +1,17 @@
+# Docker build context = repo root (see docker/README.md for the exact build
+# command: `docker build -f docker/Dockerfile -t freuid-repro:local .`).
+# Keep the build context small — large/irrelevant local data is excluded.
+.git/
+.tmp/
+checkpoints/
+features/
+logs/
+notebooks/
+public_test/
+submissions/
+train/
+train_sample/
+*.csv
+*.ipynb
+__pycache__/
+*.pyc

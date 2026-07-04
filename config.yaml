@@ -1,0 +1,103 @@
+# FREUID Challenge 2026 - Master Config
+# All paths relative to project root
+
+data:
+  root: "."               # released full dataset uses paths relative to repo root
+  train_csv: "train_labels.csv"
+  test_csv: "sample_submission.csv"       # ids only; image paths are inferred below
+  test_image_dir: "public_test/public_test"
+  test_image_ext: ".jpeg"
+  image_col: "image_path"
+  id_col: "id"
+  label_col: "label"
+  n_folds: 5
+  fold: 0                                 # active fold for single-fold runs
+  seed: 42
+  fold_strategy: "ood_type"
+  fold_group_col: "type"
+
+augmentation:
+  image_size: 512
+  train:
+    horizontal_flip: true
+    vertical_flip: false
+    rotate_limit: 5
+    brightness_contrast: [0.2, 0.2]
+    hue_saturation: [10, 15, 10]         # hue_shift, sat_shift, val_shift
+    blur_limit: 3
+    jpeg_quality: [70, 100]              # simulate compression artifacts
+    noise_var: [10.0, 30.0]             # GaussNoise var range
+    coarse_dropout: true
+  val:
+    # only resize + normalize
+    pass: true
+
+global_backbone:
+  name: "convnextv2_large"   # timm
+  pretrained: true
+  frozen: true                           # set false for end-to-end fine-tune
+  embed_dim: 1536
+  pool: "avg"                            # avg | max | gem
+  dropout: 0.0
+
+dinov2:
+  model_name: "facebook/dinov2-large"   # HuggingFace hub
+  frozen: true
+  use_cls: true
+  use_patch_mean: true
+  use_patch_stats: true                  # max+std per-patch channel
+  patch_embed_dim: 1024                  # DINOv2-large hidden size
+
+physical:
+  srm_n_filters: 30                      # SRM high-pass filter bank size
+  wavelet: "db4"                         # Daubechies-4
+  wavelet_level: 3
+  color_bins: 32                         # per-channel histogram bins
+
+fusion:
+  feature_sources: ["global", "dinov2_cls", "dinov2_patch", "physical", "metadata"]
+  model: "lightgbm"                      # lightgbm | mlp
+  lgbm:
+    n_estimators: 2000
+    learning_rate: 0.02
+    num_leaves: 64
+    max_depth: -1
+    min_child_samples: 20
+    subsample: 0.8
+    colsample_bytree: 0.8
+    reg_alpha: 0.1
+    reg_lambda: 1.0
+    objective: "binary"
+    metric: "auc"
+    device: "cpu"
+    verbosity: -1
+  mlp:
+    hidden_dims: [512, 256, 128]
+    dropout: 0.3
+    lr: 1e-3
+    epochs: 50
+
+training:
+  batch_size: 16
+  num_workers: 4
+  epochs: 20
+  lr: 1e-4
+  lr_backbone: 1e-5                      # lower LR for backbone layers
+  weight_decay: 1e-4
+  scheduler: "cosine"                    # cosine | plateau
+  warmup_epochs: 2
+  focal_gamma: 2.0
+  focal_alpha: 0.75
+  amp: true                              # automatic mixed precision
+  grad_clip: 1.0
+  accumulate_grad: 2                     # effective batch = batch_size * accumulate_grad
+
+evaluation:
+  bpcer_target: 0.01                     # APCER @ 1% BPCER operating point
+  threshold_sweep_steps: 1000
+
+paths:
+  features_dir: "features"
+  checkpoints_dir: "checkpoints"
+  submissions_dir: "submissions"
+  logs_dir: "logs"

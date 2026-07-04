@@ -1,0 +1,14 @@
+Full dataset release and clarification on Private Test Set and Generalization Goals
+Dear participants,
+
+Full training data and annotations and public test data have been released! Due to an update in dataset IDs and public/private split, the competition leaderboard has been reset. Please resubmit your solutions using the latest dataset version. Previous submissions are no longer valid under the updated evaluation schema.
+
+We would like to clarify an important aspect of the FREUID Challenge evaluation design. The goal of this competition is not only to achieve strong performance on document types already visible in the released data, but to build fraud detection systems that generalize to new document domains and realistic capture conditions.
+
+For this reason, the private test set will contain two document types that are unseen in both the training data and the public test data. These examples are included deliberately to evaluate out-of-distribution generalization and to reduce the value of solutions that mainly memorize document templates, layouts, or source-specific artifacts.
+
+The test splits also put more focus on non-synthetic, captured examples. This means that strong final submissions should be robust to physical capture pipelines, print-and-capture effects, lighting and imaging variation, and other real-world conditions that may suppress fragile digital artifacts.
+
+We encourage participants to design validation strategies and model choices with this in mind. Approaches that explicitly test generalization across document types, countries, layouts, capture conditions, and digital-vs-captured examples are likely to be more informative than validation splits that only mirror the overall training distribution.
+
+We are sharing this clarification openly so that everyone has the same expectations about the final evaluation. We also welcome discussion in this thread: how are you thinking about OOD validation, robustness checks, and generalization for this challenge?

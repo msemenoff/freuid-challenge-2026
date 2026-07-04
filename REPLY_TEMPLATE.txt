@@ -1,0 +1,20 @@
+---
+FREUID Challenge 2026 — Reproducibility Package
+---
+
+Team name: [TODO: Kaggle team name]
+Kaggle usernames: [TODO: comma-separated usernames]
+Final Kaggle submission: submission_convnext_rect832_capaug_e1_s736_notta_cv2.csv
+  (public LB 0.00465) [TODO: update this line if a later experiment beats it
+  before the July 15 deadline, and/or record the private-leaderboard label
+  once visible]
+
+Repository (this should be public git repository): [TODO: https://github.com/<org>/<repo>]
+Commit SHA: [TODO: 40-char hash — freeze this at/after the July 13 private test release]
+Technical report (PDF): [TODO: URL to compiled report/freuid_technical_report.pdf]
+
+We confirm this repository at the stated commit reproduces our selected final
+submission and complies with the competition rules.
+
+Signed (team captain): [TODO: Kaggle username]
+Date (UTC): [TODO: YYYY-MM-DD]

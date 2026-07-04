@@ -1,0 +1,4 @@
+# Track large binary model weights with Git LFS.
+# Requires: git lfs install   (one-time, per machine)
+models/*.pth filter=lfs diff=lfs merge=lfs -text
+models/**/*.pth filter=lfs diff=lfs merge=lfs -text

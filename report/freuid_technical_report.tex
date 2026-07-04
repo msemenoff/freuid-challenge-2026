@@ -1,0 +1,352 @@
+% FREUID Challenge 2026 — Technical Report
+% Compile: pdflatex freuid_technical_report.tex && bibtex freuid_technical_report && pdflatex x2
+% (or: latexmk -pdf freuid_technical_report.tex)
+
+\documentclass[11pt,a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{enumitem}
+
+\geometry{margin=2.5cm}
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  citecolor=blue!60!black,
+  urlcolor=blue!60!black,
+}
+
+\newcommand{\teamname}{[TODO: Team Name]}
+\newcommand{\kaggleteam}{[TODO: Kaggle Team Name]}
+\newcommand{\contactemail}{[TODO: corresponding@email.com]}
+\newcommand{\reportdate}{\today}
+
+\title{%
+  \textbf{The FREUID Challenge 2026}\\[0.4em]
+  \large Technical Report --- \teamname
+}
+\author{%
+  [TODO: Author Name(s)]\\
+  \small
+  [TODO: Affiliation]\\
+  \texttt{\contactemail}
+}
+\date{Report date: \reportdate}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We detect fraudulent identity documents (physical manipulations, GenAI-generated
+digital edits, and print-and-capture attacks) with a single fine-tuned ConvNeXt-V2-large
+classifier. The key finding driving our result was that FREUID Score is dominated by
+input resolution and by preserving native document aspect ratio: replacing square-padded
+low-resolution inputs with an aspect-preserving rectangular resize and progressively
+increasing training/inference resolution improved our public FREUID Score by roughly
+two orders of magnitude (square 384px: 0.198 $\rightarrow$ rect 832px, no TTA: 0.00465),
+without any architectural ensembling. We additionally applied capture-style
+augmentation (perspective jitter, re-compression, sensor noise, tone/contrast jitter)
+to close the domain gap between the training set (69{,}332 digital vs.\ only 20
+physically captured images) and a test distribution that emphasizes print-and-capture
+documents. Diverse-architecture ensembling (a normalizer-free NFNet) and multi-seed
+averaging of the same recipe were both tried and both \emph{hurt} the public
+leaderboard score once validated, despite promising offline agreement statistics; we
+report these as negative results. Our selected submission scores \textbf{0.00465}
+(FREUID Score, lower is better) on the public leaderboard. Code, the frozen model
+checkpoint, and a network-isolated Docker inference sandbox are provided for full
+reproducibility.
+\end{abstract}
+
+\noindent\textbf{Competition:} The FREUID Challenge 2026 (IJCAI-ECAI 2026)~\cite{freuid2026}\\
+\textbf{Kaggle team:} \kaggleteam\\
+\textbf{Code:} \url{https://github.com/[TODO: your-org]/[TODO: your-repo]} (commit \texttt{[TODO: SHA]})\\
+
+\section{Introduction}
+\label{sec:intro}
+
+Identity document fraud detection must generalize across three qualitatively
+different attack surfaces: (i) physical manipulation of a genuine document
+(reprints, overlays, tampered security features), (ii) fully digital,
+GenAI-assisted edits (text/face/layout changes), and (iii) print-and-capture
+attacks, where a manipulated or synthetic document is physically printed and
+re-photographed, destroying many of the pixel-level artifacts a purely digital
+detector would rely on. The official metric, the FREUID Score, combines AuDET
+with APCER at a fixed 1\% BPCER operating point (lower is better).
+
+Our approach is intentionally simple: a single global-context vision
+backbone, fine-tuned end-to-end at high, aspect-preserving input resolution,
+with augmentation designed to simulate the print-and-capture domain gap
+present in the released training data. We favored this over a
+multi-branch/fusion architecture (global + patch-anomaly + OCR/layout +
+physical-artifact branches) after observing that resolution and aspect-ratio
+handling alone closed most of the gap to a strong baseline, and that adding a
+second, architecturally diverse but weaker branch strictly hurt validated
+leaderboard performance (Section~\ref{sec:results}).
+
+\section{Method}
+\label{sec:method}
+
+\subsection{Overview}
+The pipeline is: (1) decode the document image with OpenCV
+(libjpeg-turbo), falling back to Pillow only if OpenCV cannot read the file;
+(2) resize with an aspect-preserving rectangle (no padding); (3) run the
+image through a fine-tuned ConvNeXt-V2-large backbone with a linear binary
+head; (4) apply a sigmoid to obtain a fraud score in $[0,1]$. No
+post-hoc score calibration, temperature scaling, or thresholding is applied —
+the raw sigmoid output is submitted directly, matching the leaderboard's
+numeric semantics (higher = more confident the document is fraudulent).
+
+\subsection{Model architecture}
+Backbone: \texttt{convnextv2\_large}~\cite{convnextv2} (timm~\cite{timm}), 1536-dim pooled
+feature output, average pooling, \textbf{no frozen layers} (full end-to-end
+fine-tune). Head: \texttt{Dropout(p=0.1)} $\rightarrow$ \texttt{Linear(1536,
+1)} producing a single logit. Total forward pass is a single backbone
+invocation per image; no test-time augmentation, no ensembling in the
+selected submission. Inference batch size is 1 (see
+Section~\ref{sec:inference} for why this does not affect numerics here).
+
+\subsection{Training objective and procedure}
+We fine-tune from ConvNeXt-V2's public ImageNet-pretrained weights (loaded
+once at training time only — the released checkpoint we submit contains the
+fully fine-tuned weights and requires no further downloads). Loss: focal loss
+($\gamma=2.0$, $\alpha=0.75$) to handle the label imbalance
+(40{,}005 genuine vs.\ 29{,}347 fraudulent in the training set). Optimizer:
+AdamW with two learning-rate groups (backbone $1\times10^{-5}$, head
+$1\times10^{-4}$), weight decay $1\times10^{-4}$, gradient clipping, and a
+\texttt{OneCycleLR} schedule with linear warmup. We train for a single epoch
+over the \emph{entire} labeled training set (no held-out fold, i.e.\
+\texttt{--fit\_all}) once the recipe was locked in via earlier
+fold-based experimentation, in order to maximize the data available to the
+final model. Effective batch size 8 (\texttt{batch\_size=1},
+\texttt{accumulate\_grad=8}) — required at our largest input resolution to
+fit a 16\,GB GPU.
+
+\textbf{Augmentation.} Standard augmentations: horizontal flip, affine
+(translate/scale/rotate), motion/Gaussian blur, Gaussian noise,
+brightness/contrast/hue/saturation jitter, JPEG re-compression, coarse
+dropout. \emph{Capture-style} augmentation (enabled via
+\texttt{--strong\_capture\_aug}) additionally applies: perspective jitter
+(simulating an off-axis phone/scanner capture), a random choice of
+downscale-then-upscale or aggressive JPEG re-encoding (simulating
+re-photographing a document), sensor-realistic noise (Gaussian or ISO noise),
+and gamma/CLAHE/brightness-contrast jitter (simulating varying capture
+lighting). This was motivated directly by the training-set composition
+(Section~\ref{sec:data}).
+
+\subsection{Score calibration}
+None applied. The sigmoid output of the fine-tuned head is submitted as-is at
+both public and (planned) private evaluation; this matches how the public
+leaderboard score was obtained, so no train/test mismatch is introduced by a
+separate calibration step.
+
+\section{Data}
+\label{sec:data}
+
+\subsection{FREUID training set}
+69{,}352 labeled images across five document types/classes (\texttt{EGYPT/DL},
+\texttt{GUINEA/DL}, \texttt{BENIN/DL}, \texttt{MOZAMBIQUE/DL},
+\texttt{MAURITIUS/ID}), label distribution 40{,}005 genuine / 29{,}347
+fraudulent. Critically, the \texttt{is\_digital} metadata field shows only
+\textbf{20} images are physically captured (recaptured) versus 69{,}332
+purely digital images — while the held-out/public test distribution
+emphasizes print-and-capture documents much more heavily. This digital
+$\rightarrow$ captured domain gap, not document type, is the dominant
+generalization challenge in this competition (see the discussion log,
+\texttt{discussion.txt}, in the repository for the full diagnostic trail that
+led to this conclusion). We used capture-style augmentation
+(Section~\ref{sec:method}) as our primary mitigation; a follow-up experiment
+oversampling the 20 real captured rows within each training epoch was run
+late in development — \textbf{[TODO: report its validated public-LB outcome
+here once confirmed; see repository memory/discussion log for the
+in-progress result at report-drafting time]}.
+
+\subsection{External data and pre-trained models}
+No external data beyond FREUID. The only external resource used is the
+publicly available, permissively licensed ImageNet-pretrained
+\texttt{convnextv2\_large} checkpoint distributed via \texttt{timm}
+(downloaded once during training only). The released, fully fine-tuned
+inference checkpoint requires \emph{no} network access and is included in
+this repository (see \texttt{models/README.md}).
+
+\subsection{Validation strategy}
+Early architecture/resolution/augmentation decisions were validated with a
+group-stratified out-of-distribution-by-document-type fold
+(\texttt{StratifiedGroupKFold} on \texttt{type}). This fold strategy was
+useful for catching gross regressions but \textbf{underestimated the
+public-leaderboard digital/captured domain gap} (Section~\ref{sec:data}):
+capture-style augmentation that looked neutral-to-harmful on the OOD-by-type
+fold in fact improved the public leaderboard substantially, so later
+development decisions (input resolution, inference scale, capture
+augmentation strength, ensembling) were validated directly against the
+public leaderboard rather than the offline fold. Private test labels were,
+by construction, never available during model selection.
+
+\section{Inference}
+\label{sec:inference}
+Test-time preprocessing matches training preprocessing except augmentation is
+disabled: aspect-preserving rectangular resize to height 736 (width $=
+\mathrm{round}(736 \times 1.585 / 32) \times 32 = 1152$), OpenCV decode with a
+Pillow fallback, ImageNet normalization. \textbf{No test-time augmentation} is
+applied in the selected submission (an earlier flip-averaged TTA variant was
+strictly worse once the decode path was corrected — see
+Section~\ref{sec:results}). Inference resolution (736) is deliberately
+\emph{below} training resolution (832, $\approx 0.88\times$); this scale was
+found empirically to sit at the minimum of a noisy but clearly unimodal
+inference-scale response curve (704 / 736 / 768 / 800 / 832 all evaluated).
+Batch size is 1; since ConvNeXt-V2 uses LayerNorm rather than BatchNorm,
+batch size does not affect numerics at eval time, so this choice is purely
+about matching the exact validated configuration and about being able to
+attribute a decode failure to a single image in the Docker sandbox (see
+\texttt{docker/README.md}). The exact command used to produce the selected
+submission via the CSV workflow, and the equivalent Docker entrypoint used
+for the private/final evaluation, are both documented in the repository's
+top-level \texttt{README.md} and \texttt{docker/README.md}.
+
+Hardware: single 16\,GB GPU (16{,}376\,MiB), WSL2/Linux, 54\,GB RAM + 64\,GB
+swap. Scoring the 7{,}821 publicly-scored rows takes roughly 15--18 minutes
+at scale 736 without TTA. \textbf{[TODO: measure and report CPU-only
+wall-clock, and private-set wall-clock once the private images and their
+count are available on/after July 13.]}
+
+\section{Results}
+\label{sec:results}
+
+\begin{table}[h]
+  \centering
+  \caption{Selected leaderboard results (lower FREUID Score is better).}
+  \label{tab:results}
+  \begin{tabular}{lcc}
+    \toprule
+    Configuration & FREUID $\downarrow$ & Notes \\
+    \midrule
+    Square-pad, 384px                          & 0.198    & Early baseline \\
+    Rect (aspect-preserving), 448px             & 0.16050  & \\
+    Rect, 512px                                 & 0.15403  & \\
+    Rect, 640px                                 & 0.05149  & Step-change vs.\ 512px \\
+    Rect, 768px                                 & 0.02342  & \\
+    Rect, 832px, infer @768, TTA                & 0.00515  & \\
+    Rect, 832px, infer @736, TTA                & 0.00495  & Previous champion \\
+    Rect, 832px, infer @736, \textbf{no TTA}    & \textbf{0.00465} & \textbf{Selected submission} \\
+    \midrule
+    NFNet (diverse arch.) standalone @736       & 0.11438  & Weaker; any ensemble weight on it hurt \\
+    ConvNeXt/NFNet ensemble (best weight)        & 0.00538  & Still worse than ConvNeXt alone \\
+    Two-seed ConvNeXt average (same recipe)      & 0.00685  & Hurt despite high pairwise agreement ($r{=}0.936$) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+Private leaderboard: \textbf{[TODO: fill in after the private test images are
+released (July 13, 2026) and the final submission is scored, per the code
+freeze in Section~\ref{sec:repro}]}.
+
+\subsection{Negative results}
+We highlight two results that looked promising by offline proxy metrics but
+did not improve the validated (public leaderboard) score, since we believe
+they are informative for other teams:
+\begin{itemize}[noitemsep]
+  \item \textbf{Diverse-architecture ensembling.} A normalizer-free NFNet
+  (\texttt{dm\_nfnet\_f1}), trained with an otherwise identical recipe,
+  reached a competitive training loss but scored 0.11438 standalone on the
+  public leaderboard — over $20\times$ worse than the ConvNeXt-V2 champion.
+  Every non-zero ensemble weight on the NFNet branch monotonically
+  \emph{increased} (worsened) the FREUID Score. We conclude the public test
+  distribution (skewed toward print-and-capture images) is far outside this
+  architecture's effective generalization, despite good in-distribution
+  training loss.
+  \item \textbf{Multi-seed averaging.} Two independently-seeded runs of the
+  identical champion recipe agreed strongly offline (Pearson $r = 0.936$,
+  95.0\% sign agreement at the 0.5 threshold on the 7{,}821 publicly-scored
+  rows) — a much stronger agreement signature than the NFNet pair, and the
+  textbook precondition for variance-reducing ensembling. Nonetheless, both
+  a 50/50 average (0.00685) and small-weight blends (5\%: 0.00507, 10\%:
+  0.00510) scored \emph{worse} than the single champion checkpoint alone
+  (0.00465), and the second seed's standalone score (0.03906) turned out to
+  be far weaker than the first despite comparable training loss. We did not
+  find a reliable offline signal that distinguished this failure case from a
+  genuinely beneficial ensemble ahead of time.
+\end{itemize}
+
+\section{Reproducibility}
+\label{sec:repro}
+\begin{itemize}[noitemsep]
+  \item \textbf{Repository:} \url{https://github.com/[TODO: your-org]/[TODO: your-repo]},
+  commit \texttt{[TODO: 40-character SHA, frozen at or after the July 13
+  private-test release per the competition's code-freeze policy]}.
+  \item \textbf{Docker:} `docker build -f docker/Dockerfile -t freuid-repro:local .`
+  (build context = repository root); weights are baked into the image from
+  \texttt{models/convnext\_full\_drop01\_rect832\_capaug\_e1.pth} (SHA-256 in
+  \texttt{models/README.md}) — no runtime downloads. Run with
+  \texttt{docker run --network none -v /data:/data:ro -v
+  /out:/submissions freuid-repro:local}. See \texttt{docker/README.md} for
+  the full contract and environment-variable configuration.
+  \item \textbf{Dependencies:} Python 3.11; see \texttt{docker/requirements.txt}
+  for pinned, broadly-installable version ranges, and the top-level
+  \texttt{README.md} for the exact development-environment versions
+  (\texttt{torch 2.11.0+cu126}, \texttt{timm 1.0.27}, \texttt{opencv-python
+  4.13.0}, \texttt{albumentations 2.0.8}).
+  \item \textbf{Runtime:} single 16\,GB GPU recommended; CPU fallback is
+  supported but not benchmarked in this draft --- \textbf{[TODO: fill in
+  CPU wall-clock before the final submission]}.
+  \item \textbf{Randomness:} training used a fixed seed (42) via
+  \texttt{src/utils/seed.py::seed\_everything}; inference is deterministic
+  given the frozen checkpoint (no dropout/augmentation at eval time, no TTA
+  in the selected submission).
+  \item \textbf{Network:} inference requires \emph{no} network access
+  (\texttt{docker run --network none}); network is only used at
+  \texttt{docker build} time to install Python dependencies.
+\end{itemize}
+
+\section{Team and contributions}
+\textbf{[TODO: list team members and roles — modeling, data, engineering,
+writing.]}
+
+\section*{Acknowledgments}
+\textbf{[TODO: optional funding/compute acknowledgments, organizer thanks.]}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\appendix
+\section{Hyperparameters}
+\label{app:hparams}
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{ll}
+    \toprule
+    Hyperparameter & Value \\
+    \midrule
+    Backbone & \texttt{convnextv2\_large} (timm), full fine-tune \\
+    Training image size & 832 (rect, aspect 1.585 $\Rightarrow$ 832$\times$1312) \\
+    Inference image size & 736 (rect, aspect 1.585 $\Rightarrow$ 736$\times$1152) \\
+    Batch size (train) & 1 (accumulate\_grad = 8, effective 8) \\
+    Batch size (inference) & 1 \\
+    Learning rate (head) & $1\times10^{-4}$ \\
+    Learning rate (backbone) & $1\times10^{-5}$ \\
+    Weight decay & $1\times10^{-4}$ \\
+    Head dropout & 0.1 \\
+    LR schedule & OneCycleLR, linear warmup \\
+    Loss & Focal loss ($\gamma=2.0$, $\alpha=0.75$) \\
+    Epochs & 1 (full training set, no held-out fold) \\
+    Seed & 42 \\
+    Test-time augmentation & None (selected submission) \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\section{Additional ablations}
+See Table~\ref{tab:results} and the negative-results discussion in
+Section~\ref{sec:results}. The full, chronological experimental log
+(including every intermediate resolution/scale/augmentation configuration
+tried) is preserved in \texttt{discussion.txt} in the repository for
+transparency.
+
+\end{document}
