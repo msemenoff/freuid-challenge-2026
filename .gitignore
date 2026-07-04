@@ -30,3 +30,12 @@ __pycache__/
 .DS_Store
 .vscode/
 *.swp
+
+# LaTeX build artifacts (report/freuid_technical_report.pdf itself is committed)
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.fdb_latexmk
+report/*.fls
+report/*.log
+report/*.out
