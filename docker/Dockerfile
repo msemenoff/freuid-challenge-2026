@@ -24,14 +24,23 @@ ENV PYTHONUNBUFFERED=1 \
     FREUID_IMAGE_SIZE=736 \
     FREUID_RECT_ASPECT=1.585 \
     FREUID_BATCH_SIZE=1 \
-    FREUID_NUM_WORKERS=0
+    FREUID_NUM_WORKERS=0 \
+    # Albumentations phones home for a version check at import time by
+    # default; this is harmless under --network none (fails silently with a
+    # warning) but disabling it keeps logs clean and avoids the DNS lookup.
+    NO_ALBUMENTATIONS_UPDATE=1
 
 WORKDIR /app
 
 # System libraries required by OpenCV (image decode) and Pillow fallback.
+# build-essential/cmake are a fallback in case a transitive dependency (e.g.
+# stringzilla, pulled in by albumentations>=2.0 -> albucore) ever needs to be
+# built from source instead of installed from a prebuilt wheel.
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libgl1 \
         libglib2.0-0 \
+        build-essential \
+        cmake \
     && rm -rf /var/lib/apt/lists/*
 
 COPY docker/requirements.txt .
