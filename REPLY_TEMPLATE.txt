@@ -11,7 +11,7 @@ Final Kaggle submission: submission_convnext_rect832_capaug_e1_s736_notta_cv2.cs
 
 Repository (this should be public git repository): https://github.com/msemenoff/freuid-challenge-2026
 Commit SHA: 683b274aae00078d2dd5a93c81c7a8c6ba60c9f4
-Technical report (PDF): [TODO: URL to compiled report/freuid_technical_report.pdf — e.g. a raw GitHub link once pushed]
+Technical report (PDF): https://github.com/msemenoff/freuid-challenge-2026/blob/master/report/freuid_technical_report.pdf
 
 We confirm this repository at the stated commit reproduces our selected final
 submission and complies with the competition rules.
