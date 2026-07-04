@@ -2,8 +2,8 @@
 FREUID Challenge 2026 — Reproducibility Package
 ---
 
-Team name: [TODO: Kaggle team name]
-Kaggle usernames: [TODO: comma-separated usernames]
+Team name: test_freuid
+Kaggle usernames: Michael Semenoff
 Final Kaggle submission: submission_convnext_rect832_capaug_e1_s736_notta_cv2.csv
   (public LB 0.00465) [TODO: update this line if a later experiment beats it
   before the July 15 deadline, and/or record the private-leaderboard label
@@ -16,5 +16,5 @@ Technical report (PDF): [TODO: URL to compiled report/freuid_technical_report.pd
 We confirm this repository at the stated commit reproduces our selected final
 submission and complies with the competition rules.
 
-Signed (team captain): [TODO: Kaggle username]
-Date (UTC): [TODO: YYYY-MM-DD]
+Signed (team captain): Michael Semenoff
+Date (UTC): [TODO: YYYY-MM-DD — fill in on the day you post this reply]
