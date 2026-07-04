@@ -12,6 +12,9 @@ __pycache__/
 *.jpeg:Zone.Identifier
 *.jpg:Zone.Identifier
 
+# Original user planning notes (kept locally, not part of the public repro package)
+/prompt.txt
+
 # Large CSVs (regenerable, not source)
 /train_labels.csv
 /sample_submission.csv
