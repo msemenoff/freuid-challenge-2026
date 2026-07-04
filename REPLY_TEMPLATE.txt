@@ -9,9 +9,9 @@ Final Kaggle submission: submission_convnext_rect832_capaug_e1_s736_notta_cv2.cs
   before the July 15 deadline, and/or record the private-leaderboard label
   once visible]
 
-Repository (this should be public git repository): [TODO: https://github.com/<org>/<repo>]
-Commit SHA: [TODO: 40-char hash — freeze this at/after the July 13 private test release]
-Technical report (PDF): [TODO: URL to compiled report/freuid_technical_report.pdf]
+Repository (this should be public git repository): https://github.com/msemenoff/freuid-challenge-2026
+Commit SHA: [TODO: 40-char hash — freeze this at/after the July 13 private test release; run `git rev-parse HEAD` right before posting this reply]
+Technical report (PDF): [TODO: URL to compiled report/freuid_technical_report.pdf — e.g. a raw GitHub link once pushed]
 
 We confirm this repository at the stated commit reproduces our selected final
 submission and complies with the competition rules.

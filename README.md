@@ -170,21 +170,16 @@ allowed — only inference, documentation, and Docker packaging updates.
 ## Outstanding items (see the task summary for the full list with owners)
 
 This package is prepared as completely as possible ahead of the private test
-release. Items that require the user's action, credentials, or the private
-data itself are listed in detail in the accompanying task summary/response —
-short version:
+release. Repository: https://github.com/msemenoff/freuid-challenge-2026
 
-- Push this repo to a public OSI-licensed remote (e.g. GitHub) — needs your
-  account/credentials.
-- Install Docker + Git LFS locally (not available in this dev sandbox) and
-  run an actual `docker build` / `docker run --network none` end-to-end test.
-- Fill in team name, authors, and affiliations in `LICENSE`, `report/`, and
-  `REPLY_TEMPLATE.txt`.
-- Compile `report/freuid_technical_report.tex` to PDF (needs a LaTeX
-  toolchain, e.g. Overleaf or `latexmk`, not available in this dev sandbox).
+- Push local commits to the GitHub remote (`git push`) — needs your GitHub
+  credentials/authentication.
+- After pushing, freeze the final commit SHA (`git rev-parse HEAD`) into
+  `REPLY_TEMPLATE.txt` and `report/freuid_technical_report.tex`.
 - After July 13: run inference on the released private images (Docker or CSV
-  workflow), update the private-row Kaggle submission, freeze the commit SHA,
-  and submit the final reply by July 15.
+  workflow), update the private-row Kaggle submission, record the private LB
+  score in the report, re-freeze the commit SHA, and submit the final reply
+  by July 15.
 
 ## License
 
