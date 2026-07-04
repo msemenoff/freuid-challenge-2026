@@ -67,7 +67,7 @@ reproducibility.
 
 \noindent\textbf{Competition:} The FREUID Challenge 2026 (IJCAI-ECAI 2026)~\cite{freuid2026}\\
 \textbf{Kaggle team:} \kaggleteam\\
-\textbf{Code:} \url{https://github.com/msemenoff/freuid-challenge-2026} (commit \texttt{[TODO: SHA]})\\
+\textbf{Code:} \url{https://github.com/msemenoff/freuid-challenge-2026} (commit \texttt{683b274aae00078d2dd5a93c81c7a8c6ba60c9f4})\\
 
 \section{Introduction}
 \label{sec:intro}
@@ -278,8 +278,12 @@ they are informative for other teams:
 \label{sec:repro}
 \begin{itemize}[noitemsep]
   \item \textbf{Repository:} \url{https://github.com/msemenoff/freuid-challenge-2026},
-  commit \texttt{[TODO: 40-character SHA, frozen at or after the July 13
-  private-test release per the competition's code-freeze policy]}.
+  commit \texttt{683b274aae00078d2dd5a93c81c7a8c6ba60c9f4} (verified: the
+  Git LFS-tracked checkpoint's SHA-256 on the remote matches
+  \texttt{models/README.md}). This SHA reflects the code/weights state at the
+  time of writing; if the private-test-inference-only commits described below
+  are added after July 13, this section will be updated to point at the
+  final frozen commit while confirming model weights are unchanged.
   \item \textbf{Docker:} `docker build -f docker/Dockerfile -t freuid-repro:local .`
   (build context = repository root); weights are baked into the image from
   \texttt{models/convnext\_full\_drop01\_rect832\_capaug\_e1.pth} (SHA-256 in
