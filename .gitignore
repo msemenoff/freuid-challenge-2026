@@ -34,6 +34,11 @@ __pycache__/
 .vscode/
 *.swp
 
+# Credentials / API tokens — never commit these
+*token*.txt
+token.txt
+api_token_cli_submission.txt
+
 # LaTeX build artifacts (report/freuid_technical_report.pdf itself is committed)
 report/*.aux
 report/*.bbl
