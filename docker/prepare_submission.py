@@ -30,10 +30,13 @@ import os
 import sys
 from pathlib import Path
 
+import time
+
 import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import DataLoader
+from tqdm import tqdm
 
 # `/app` (this file's directory) is added to sys.path by Python automatically
 # when invoked as `python /app/prepare_submission.py`; the explicit insert
@@ -132,6 +135,7 @@ def run_inference(
     )
     offset = 0
     loader_iter = iter(loader)
+    progress = tqdm(total=len(ids_in_order), desc="infer", file=sys.stderr, mininterval=5.0)
     while True:
         try:
             batch = next(loader_iter)
@@ -156,6 +160,7 @@ def run_inference(
             )
             scores[offset] = FALLBACK_SCORE
             offset += 1
+            progress.update(1)
             continue
 
         n = batch["image"].shape[0]
@@ -166,7 +171,9 @@ def run_inference(
         for j in range(n):
             scores[offset + j] = float(probs[j])
         offset += n
+        progress.update(n)
 
+    progress.close()
     if any(s is None for s in scores):
         missing = [ids_in_order[i] for i, s in enumerate(scores) if s is None]
         raise RuntimeError(f"Inference did not produce scores for {len(missing)} id(s): {missing[:5]}")
