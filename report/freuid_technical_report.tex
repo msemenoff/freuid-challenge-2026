@@ -65,7 +65,7 @@ reproducibility.
 
 \noindent\textbf{Competition:} The FREUID Challenge 2026 (IJCAI-ECAI 2026)~\cite{freuid2026}\\
 \textbf{Kaggle team:} \kaggleteam\\
-\textbf{Code:} \url{https://github.com/msemenoff/freuid-challenge-2026} (commit \texttt{683b274aae00078d2dd5a93c81c7a8c6ba60c9f4})\\
+\textbf{Code:} \url{https://github.com/msemenoff/freuid-challenge-2026} (commit \texttt{d3a0b9e594a28786c6c8859b81d638608676da98})\\
 
 \section{Introduction}
 \label{sec:intro}
@@ -161,10 +161,13 @@ generalization challenge in this competition (see the discussion log,
 \texttt{discussion.txt}, in the repository for the full diagnostic trail that
 led to this conclusion). We used capture-style augmentation
 (Section~\ref{sec:method}) as our primary mitigation; a follow-up experiment
-oversampling the 20 real captured rows within each training epoch was run
-late in development — \textbf{[TODO: report its validated public-LB outcome
-here once confirmed; see repository memory/discussion log for the
-in-progress result at report-drafting time]}.
+oversampling the 20 real captured rows 200$\times$ within each training epoch
+was run late in development and produced a checkpoint, but its public-LB
+score was never confirmed before the July 13 code freeze took effect. It was
+therefore \emph{not} selected: the final submission uses the original
+capture-augmentation-only champion checkpoint (no oversampling), consistent
+with the code-freeze requirement that model selection be locked in before
+the private test release.
 
 \subsection{External data and pre-trained models}
 No external data beyond FREUID. The only external resource used is the
@@ -210,9 +213,10 @@ top-level \texttt{README.md} and \texttt{docker/README.md}.
 
 Hardware: single 16\,GB GPU (16{,}376\,MiB), WSL2/Linux, 54\,GB RAM + 64\,GB
 swap. Scoring the 7{,}821 publicly-scored rows takes roughly 15--18 minutes
-at scale 736 without TTA. \textbf{[TODO: measure and report CPU-only
-wall-clock, and private-set wall-clock once the private images and their
-count are available on/after July 13.]}
+at scale 736 without TTA. Private-set inference (134{,}997 images, same GPU
+and recipe) completed in 4h50m32s (7.74 images/s steady state), run
+inference-only on July 13, 2026 per the competition's code-freeze policy.
+CPU-only wall-clock was not benchmarked.
 
 \section{Results}
 \label{sec:results}
@@ -241,9 +245,15 @@ count are available on/after July 13.]}
   \end{tabular}
 \end{table}
 
-Private leaderboard: \textbf{[TODO: fill in after the private test images are
-released (July 13, 2026) and the final submission is scored, per the code
-freeze in Section~\ref{sec:repro}]}.
+Private leaderboard: final submission (\texttt{submission\_FINAL\_private\_merged.csv},
+uploaded 2026-07-13 12:04 PM PST / 19:04 UTC) scored \textbf{0.00465} at
+submission time, matching our public-leaderboard optimum. This file merges
+the 7{,}821 real public predictions with 134{,}997 real private predictions
+produced by an inference-only run of the frozen champion checkpoint against
+the private test images released July 13, 2026, with no fallback values
+remaining. The competition platform may report a private-only component
+separately after final close; this report will not be revised after the
+July 15 deadline per the code-freeze policy.
 
 \subsection{Negative results}
 We highlight two results that looked promising by offline proxy metrics but
@@ -276,12 +286,13 @@ they are informative for other teams:
 \label{sec:repro}
 \begin{itemize}[noitemsep]
   \item \textbf{Repository:} \url{https://github.com/msemenoff/freuid-challenge-2026},
-  commit \texttt{683b274aae00078d2dd5a93c81c7a8c6ba60c9f4} (verified: the
-  Git LFS-tracked checkpoint's SHA-256 on the remote matches
-  \texttt{models/README.md}). This SHA reflects the code/weights state at the
-  time of writing; if the private-test-inference-only commits described below
-  are added after July 13, this section will be updated to point at the
-  final frozen commit while confirming model weights are unchanged.
+  commit \texttt{d3a0b9e594a28786c6c8859b81d638608676da98}. This is the
+  commit whose code (docker/prepare\_submission.py, src/, config.yaml) was
+  actually used to run the inference-only private-test scoring on July 13,
+  2026; only documentation/reply-template commits were added afterward, and
+  model weights (\texttt{models/convnext\_full\_drop01\_rect832\_capaug\_e1.pth})
+  were never modified after the July 4, 2026 push, satisfying the
+  competition's code-freeze requirement.
   \item \textbf{Docker:} `docker build -f docker/Dockerfile -t freuid-repro:local .`
   (build context = repository root); weights are baked into the image from
   \texttt{models/convnext\_full\_drop01\_rect832\_capaug\_e1.pth} (SHA-256 in
@@ -294,9 +305,9 @@ they are informative for other teams:
   \texttt{README.md} for the exact development-environment versions
   (\texttt{torch 2.11.0+cu126}, \texttt{timm 1.0.27}, \texttt{opencv-python
   4.13.0}, \texttt{albumentations 2.0.8}).
-  \item \textbf{Runtime:} single 16\,GB GPU recommended; CPU fallback is
-  supported but not benchmarked in this draft --- \textbf{[TODO: fill in
-  CPU wall-clock before the final submission]}.
+  \item \textbf{Runtime:} single 16\,GB GPU recommended (private-set
+  inference: 134{,}997 images in 4h50m32s, 7.74 images/s); CPU fallback is
+  supported but was not benchmarked.
   \item \textbf{Randomness:} training used a fixed seed (42) via
   \texttt{src/utils/seed.py::seed\_everything}; inference is deterministic
   given the frozen checkpoint (no dropout/augmentation at eval time, no TTA

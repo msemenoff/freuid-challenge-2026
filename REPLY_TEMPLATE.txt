@@ -4,17 +4,21 @@ FREUID Challenge 2026 — Reproducibility Package
 
 Team name: test_freuid
 Kaggle usernames: Michael Semenoff
-Final Kaggle submission: submission_convnext_rect832_capaug_e1_s736_notta_cv2.csv
-  (public LB 0.00465) [TODO: update this line if a later experiment beats it
-  before the July 15 deadline, and/or record the private-leaderboard label
-  once visible]
+Final Kaggle submission: submission_FINAL_private_merged.csv
+  (score shown at submission time: 0.00465, matching our public-leaderboard
+  optimum; uploaded 2026-07-13 12:04 PM PST / 19:04 UTC). Produced by
+  merging real public predictions (submission_convnext_rect832_capaug_e1_s736_notta_cv2.csv,
+  7,821 rows) with real private predictions generated via inference-only
+  run of docker/prepare_submission.py against the frozen champion
+  checkpoint (134,997 rows), covering all 142,818 test rows with no
+  fallback values remaining.
 
 Repository (this should be public git repository): https://github.com/msemenoff/freuid-challenge-2026
-Commit SHA: 683b274aae00078d2dd5a93c81c7a8c6ba60c9f4
+Commit SHA: d3a0b9e594a28786c6c8859b81d638608676da98
 Technical report (PDF): https://github.com/msemenoff/freuid-challenge-2026/blob/master/report/freuid_technical_report.pdf
 
 We confirm this repository at the stated commit reproduces our selected final
 submission and complies with the competition rules.
 
 Signed (team captain): Michael Semenoff
-Date (UTC): [TODO: YYYY-MM-DD — fill in on the day you post this reply]
+Date (UTC): 2026-07-13
