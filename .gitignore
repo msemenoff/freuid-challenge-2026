@@ -7,6 +7,7 @@ __pycache__/
 # Data (released by organizers; not ours to redistribute in full)
 /train/
 /public_test/
+/private_test/
 /features/
 /*.zip
 *.jpeg:Zone.Identifier
